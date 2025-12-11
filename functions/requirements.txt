@@ -1,0 +1,6 @@
+firebase-admin
+flask
+requests
+beautifulsoup4
+sendgrid
+google-cloud-pubsub
