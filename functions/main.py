@@ -2,7 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from flask import Flask, request, jsonify
 from datetime import datetime
-
+from price_service import get_price
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(credentials.ApplicationDefault())
@@ -65,3 +65,28 @@ def get_products(request):
         products.append(item)
 
     return jsonify(products), 200, CORS_HEADERS
+
+def check_prices(request):
+    products = db.collection("products") \
+                 .where("is_active", "==", True) \
+                 .stream()
+
+    for doc in products:
+        data = doc.to_dict()
+
+        try:
+            price = get_price(data["url"])
+            target = data["target_price"]
+
+            update = {
+                "last_price": price,
+                "checked_at": firestore.SERVER_TIMESTAMP,
+                "price_below_target": price <= target
+            }
+            doc.reference.update(update)
+
+        except Exception as e:
+            print(f"{data['url']} → {e}")
+
+    return "OK", 200
+

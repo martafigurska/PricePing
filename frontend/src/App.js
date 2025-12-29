@@ -31,7 +31,7 @@ function App() {
       <h2>Observed Products</h2>
       <ul>
         {products.map(p => (
-          <li key={p.id}>{p.url} – target price: {p.target_price} – email: {p.email}</li>
+          <li key={p.id}>{p.url} – target price: {p.target_price} – email: {p.email} – last price: {p.last_price} – checked at: {p.checked_at}</li>
         ))}
       </ul>
     </div>
