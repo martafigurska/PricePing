@@ -1,7 +1,11 @@
-const BASE_URL = "https://europe-west1-priceping-480812.cloudfunctions.net"; 
+export const BASE_URLS = {
+  addProduct: "https://add-product-b432xl5c5a-ew.a.run.app",
+  getProducts: "https://get-products-b432xl5c5a-ew.a.run.app",
+  checkPrices: "https://europe-west1-priceping-480812.cloudfunctions.net/check-prices"
+};
 
 export async function addProduct(url, target_price, email) {
-  const res = await fetch(`${BASE_URL}/add_product`, {
+  const res = await fetch(BASE_URLS.addProduct, { // Gen2 addProduct
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url, target_price, email })
@@ -10,6 +14,16 @@ export async function addProduct(url, target_price, email) {
 }
 
 export async function getProducts() {
-  const res = await fetch(`${BASE_URL}/get_products`);
+  const res = await fetch(BASE_URLS.getProducts); // Gen2 getProducts
+  return res.json();
+}
+
+export async function checkPrices() {
+  const res = await fetch(BASE_URLS.checkPrices); // Gen1 checkPrices
+  return res.text(); // Gen1 zwraca zwykły tekst "OK"
+}
+
+export async function deleteProduct(id) {
+  const res = await fetch(`${BASE_URLS.getProducts}/delete-product?id=${id}`, { method: "DELETE" });
   return res.json();
 }
