@@ -6,7 +6,7 @@ export const BASE_URLS = {
 };
 
 export async function addProduct(url, target_price, email) {
-  const res = await fetch(BASE_URLS.addProduct, { // Gen2 addProduct
+  const res = await fetch(BASE_URLS.addProduct, { 
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url, target_price, email })
@@ -15,13 +15,13 @@ export async function addProduct(url, target_price, email) {
 }
 
 export async function getProducts() {
-  const res = await fetch(BASE_URLS.getProducts); // Gen2 getProducts
+  const res = await fetch(BASE_URLS.getProducts); 
   return res.json();
 }
 
 export async function checkPrices() {
-  const res = await fetch(BASE_URLS.checkPrices); // Gen1 checkPrices
-  return res.text(); // Gen1 zwraca zwykły tekst "OK"
+  const res = await fetch(BASE_URLS.checkPrices); // Gen1 
+  return res.text(); 
 }
 
 export async function deleteProduct(id) {

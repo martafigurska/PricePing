@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { addProduct, getProducts, deleteProduct } from "./api"; // <- import poprawny
+import { addProduct, getProducts, deleteProduct } from "./api"; 
 
 function App() {
   const [url, setUrl] = useState("");
@@ -8,14 +8,18 @@ function App() {
   const [products, setProducts] = useState([]);
 
   const fetchProducts = async () => {
-    const data = await getProducts(); // <- korzysta z poprawnego BASE_URLS.getProducts
+    const data = await getProducts(); 
     setProducts(data);
   };
 
   const handleAdd = async () => {
-    await addProduct(url, parseFloat(targetPrice), email); // <- poprawny URL Gen2
+    try{
+    await addProduct(url, parseFloat(targetPrice), email); 
     setUrl(""); setTargetPrice(""); setEmail("");
-    fetchProducts();
+    await fetchProducts();
+    } catch (err) {
+    console.error("Add product failed", err);
+  }
   };
 
   useEffect(() => { fetchProducts(); }, []);
@@ -55,8 +59,8 @@ function App() {
                     style={{ padding: "0.25rem 0.5rem", cursor: "pointer" }}
                     onClick={async () => {
                       try {
-                        await deleteProduct(p.id); // <- używa poprawnego API Gen2
-                        fetchProducts(); // odśwież tabelkę
+                        await deleteProduct(p.id); 
+                        fetchProducts(); 
                       } catch (err) {
                         console.error("Delete failed", err);
                       }

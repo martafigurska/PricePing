@@ -12,3 +12,7 @@ output "add_product_url" {
 output "get_products_url" {
   value = google_cloudfunctions2_function.get_products.service_config[0].uri
 }
+
+output "delete_product_url" {
+  value = google_cloudfunctions2_function.delete_product.service_config[0].uri
+}

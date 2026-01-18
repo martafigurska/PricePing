@@ -11,7 +11,7 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# BeautifulSoup for selected domains
+# BeautifulSoup
 KNOWN_DOMAINS = {
     "amazon.pl",
     "mohito.com",

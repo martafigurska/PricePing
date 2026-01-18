@@ -90,3 +90,14 @@ def check_prices(request):
 
     return "OK", 200
 
+def delete_product(request):
+    product_id = request.args.get("id")
+    if not product_id:
+        return {"error": "Missing id"}, 400
+
+    ref = db.collection("products").document(product_id)
+    if not ref.get().exists:
+        return {"error": "Not found"}, 404
+
+    ref.delete()
+    return {"status": "deleted"}, 200
