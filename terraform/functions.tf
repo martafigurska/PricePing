@@ -2,7 +2,15 @@
 resource "google_storage_bucket" "functions" {
   name     = "${var.project_id}-functions-src"
   location = var.region
+  force_destroy = true
 }
+
+resource "google_storage_bucket_object" "functions_zip" {
+  name   = "functions.zip"
+  bucket = google_storage_bucket.functions.name
+  source = "../functions/functions.zip"  
+}
+
 
 # add_product
 resource "google_cloudfunctions2_function" "add_product" {
@@ -17,7 +25,7 @@ resource "google_cloudfunctions2_function" "add_product" {
     source {
       storage_source {
         bucket = google_storage_bucket.functions.name
-        object = "functions.zip"
+        object = google_storage_bucket_object.functions_zip.name
       }
     }
   }
@@ -43,7 +51,7 @@ resource "google_cloudfunctions2_function" "get_products" {
     source {
       storage_source {
         bucket = google_storage_bucket.functions.name
-        object = "functions.zip"
+        object = google_storage_bucket_object.functions_zip.name
       }
     }
   }
@@ -95,7 +103,7 @@ resource "google_cloudfunctions2_function" "delete_product" {
     source {
       storage_source {
         bucket = google_storage_bucket.functions.name
-        object = "functions.zip"
+        object = google_storage_bucket_object.functions_zip.name
       }
     }
   }
