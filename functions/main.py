@@ -3,6 +3,15 @@ from firebase_admin import credentials, firestore
 from flask import Flask, request, jsonify
 from datetime import datetime
 from price_service import get_price
+import base64
+import json
+from google.cloud import pubsub_v1
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from base64 import b64decode
+from google.cloud import pubsub_v1
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(credentials.ApplicationDefault())
@@ -66,14 +75,25 @@ def get_products(request):
 
     return jsonify(products), 200, CORS_HEADERS
 
+
 def check_prices(request):
-    products = db.collection("products") \
-                 .where("is_active", "==", True) \
-                 .stream()
+    project_id = os.environ.get("PROJECT_ID")
+    if not project_id:
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(project_id, "send-email")
+    payload = request.get_json(silent=True) or {}
+
+    print("Scheduler payload:", payload)
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(os.environ["PROJECT_ID"], "send-email")
+
+    products = db.collection("products").where("is_active", "==", True).stream()
 
     for doc in products:
         data = doc.to_dict()
-
         try:
             price = get_price(data["url"])
             target = data["target_price"]
@@ -84,6 +104,14 @@ def check_prices(request):
                 "price_below_target": price <= target
             }
             doc.reference.update(update)
+
+            if price <= target:
+                message = {
+                    "to": data['email'],
+                    "subject": f"Cena spadła dla {data['url']}",
+                    "body": f"Cena spadła do {price} zł"
+                }
+                publisher.publish(topic_path, json.dumps(message).encode("utf-8"))
 
         except Exception as e:
             print(f"{data['url']} → {e}")
@@ -101,3 +129,25 @@ def delete_product(request):
 
     ref.delete()
     return {"status": "deleted"}, 200
+
+def send_email(event, context):
+    data = json.loads(b64decode(event['data']).decode('utf-8'))
+
+    to_email = data['to']
+    subject = data['subject']
+    body = data['body']
+
+    gmail_user = os.environ.get("GMAIL_USER")
+    gmail_password = os.environ.get("GMAIL_APP_PASSWORD")
+
+    msg = MIMEMultipart()
+    msg['From'] = gmail_user
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(gmail_user, gmail_password)
+        server.send_message(msg)
+    
+    print(f"Sent email to {to_email}")

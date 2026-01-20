@@ -1,9 +1,3 @@
-# Gen1
-output "check_prices_url" {
-  value = google_cloudfunctions_function.check_prices.https_trigger_url
-}
-
-
 # Gen2
 output "add_product_url" {
   value = google_cloudfunctions2_function.add_product.service_config[0].uri
@@ -15,4 +9,8 @@ output "get_products_url" {
 
 output "delete_product_url" {
   value = google_cloudfunctions2_function.delete_product.service_config[0].uri
+}
+
+output "check_prices_url" {
+  value = google_cloudfunctions2_function.check_prices.service_config[0].uri
 }

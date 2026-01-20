@@ -6,3 +6,4 @@ sendgrid
 google-cloud-pubsub
 google-cloud-aiplatform
 lxml
+functions-framework==3.*

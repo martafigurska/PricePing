@@ -1,14 +1,14 @@
 # Bucket na kod funkcji
 resource "google_storage_bucket" "functions" {
-  name     = "${var.project_id}-functions-src"
-  location = var.region
+  name          = "${var.project_id}-functions-src"
+  location      = var.region
   force_destroy = true
 }
 
 resource "google_storage_bucket_object" "functions_zip" {
   name   = "functions.zip"
   bucket = google_storage_bucket.functions.name
-  source = "../functions/functions.zip"  
+  source = "../functions/functions.zip"
 }
 
 
@@ -34,7 +34,7 @@ resource "google_cloudfunctions2_function" "add_product" {
     available_memory = "512M"
     timeout_seconds  = 60
     ingress_settings = "ALLOW_ALL"
-    
+
   }
 }
 
@@ -63,19 +63,33 @@ resource "google_cloudfunctions2_function" "get_products" {
   }
 }
 
+
 # check_prices
-resource "google_cloudfunctions_function" "check_prices" {
-  name        = "check-prices"
-  runtime     = "python310"
-  entry_point = "check_prices"
-  region      = var.region
+resource "google_cloudfunctions2_function" "check_prices" {
+  name     = "check-prices"
+  location = var.region
+  project  = var.project_id
 
-  source_archive_bucket = google_storage_bucket.functions.name
-  source_archive_object = "functions.zip"
-  trigger_http          = true
+  build_config {
+    runtime     = "python310"
+    entry_point = "check_prices"
 
-  available_memory_mb   = 512
-  timeout               = 540
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions.name
+        object = google_storage_bucket_object.functions_zip.name
+      }
+    }
+  }
+
+  service_config {
+    available_memory = "512M"
+    timeout_seconds  = 540
+    ingress_settings = "ALLOW_ALL"
+    environment_variables = {
+      PROJECT_ID = var.project_id
+    }
+  }
 }
 
 
@@ -83,15 +97,16 @@ resource "google_cloudfunctions_function" "check_prices" {
 resource "google_cloud_scheduler_job" "check_prices" {
   name      = "check-prices-job"
   region    = var.region
-  schedule  = "0 * * * *"
+  schedule  = "*/10 * * * *"
   time_zone = "Europe/Warsaw"
 
   http_target {
-    uri         = google_cloudfunctions_function.check_prices.https_trigger_url
+    uri         = google_cloudfunctions2_function.check_prices.service_config[0].uri
     http_method = "GET"
   }
 }
 
+# delete_product
 resource "google_cloudfunctions2_function" "delete_product" {
   name     = "delete-product"
   location = var.region
@@ -115,23 +130,56 @@ resource "google_cloudfunctions2_function" "delete_product" {
   }
 }
 
-resource "google_cloud_run_service_iam_member" "add_product_invoker" {
-  service  = google_cloudfunctions2_function.add_product.name
-  location = google_cloudfunctions2_function.add_product.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+# send_email
+resource "google_cloudfunctions2_function" "send_email" {
+  name     = "send-email"
+  location = var.region
+  project  = var.project_id
+
+  build_config {
+    runtime     = "python310"
+    entry_point = "send_email"
+
+    source {
+      storage_source {
+        bucket = google_storage_bucket.functions.name
+        object = google_storage_bucket_object.functions_zip.name
+      }
+    }
+  }
+
+  event_trigger {
+    event_type  = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic = google_pubsub_topic.send_email.id
+    trigger_region = var.region
+  }
+
+  service_config {
+    available_memory = "512M"
+    timeout_seconds  = 540
+    environment_variables = {
+      GMAIL_USER         = var.gmail_user
+      GMAIL_APP_PASSWORD = var.gmail_app_password
+      PROJECT_ID         = var.project_id
+    }
+  }
 }
 
-resource "google_cloud_run_service_iam_member" "get_products_invoker" {
-  service  = google_cloudfunctions2_function.get_products.name
-  location = google_cloudfunctions2_function.get_products.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+
+resource "google_pubsub_topic" "send_email" {
+  name = "send-email"
 }
 
-resource "google_cloud_run_service_iam_member" "delete_product_invoker" {
-  service  = google_cloudfunctions2_function.delete_product.name
-  location = google_cloudfunctions2_function.delete_product.location
+resource "google_cloud_run_service_iam_member" "invoker" {
+  for_each = toset([
+    google_cloudfunctions2_function.add_product.name,
+    google_cloudfunctions2_function.get_products.name,
+    google_cloudfunctions2_function.delete_product.name,
+    google_cloudfunctions2_function.check_prices.name
+  ])
+  
+  service  = each.value
+  location = var.region
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
