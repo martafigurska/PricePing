@@ -12,12 +12,17 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from base64 import b64decode
 from google.cloud import pubsub_v1
+from google.cloud import monitoring_v3
+import time
+from google.protobuf.timestamp_pb2 import Timestamp
+from datetime import datetime, timezone
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(credentials.ApplicationDefault())
 
 db = firestore.client()
 
+client = monitoring_v3.MetricServiceClient()
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -28,6 +33,35 @@ def handle_cors(request):
     if request.method == "OPTIONS":
         return ("", 204, CORS_HEADERS)
     return None
+
+
+def send_custom_metric(value=1):
+    try:
+        project_id = os.environ.get("GOOGLE_CLOUD_PROJECT") or "priceping-480812"
+        project_name = f"projects/{project_id}"
+
+        series = monitoring_v3.TimeSeries()
+        series.metric.type = "custom.googleapis.com/products_added"
+        
+        series.resource.type = "global"
+
+        point = monitoring_v3.Point()
+        point.value.double_value = float(value)
+
+        now = datetime.now(timezone.utc)
+        timestamp = Timestamp()
+        timestamp.FromDatetime(now)
+
+        point.interval.end_time = timestamp
+
+        series.points.append(point)
+
+        client.create_time_series(name=project_name, time_series=[series])
+        print(f"[CUSTOM METRIC] Sent value: {value}", flush=True)
+
+    except Exception as e:
+        print(f"[CUSTOM METRIC ERROR] {e}", flush=True)
+
 
 def add_product(request):
     cors = handle_cors(request)
@@ -57,6 +91,7 @@ def add_product(request):
         "is_active": True
     })
 
+    send_custom_metric(value=1)
     return jsonify({"id": doc_ref[1].id}), 200, CORS_HEADERS
 
 def get_products(request):
